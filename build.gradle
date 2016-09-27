@@ -1,0 +1,203 @@
+group "com.myco.service"
+version "0.1"
+
+apply plugin: "java"
+apply plugin: "checkstyle"
+apply plugin: "findbugs"
+apply plugin: "spring-boot"
+apply plugin: "jacoco"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+buildscript {
+    ext {
+        springBootVersion = "1.3.3.RELEASE"
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "http://repo.spring.io/release" }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "http://repo.spring.io/release" }
+}
+
+jar {
+    baseName = 'services'
+    version =  '0.0.0'
+}
+
+checkstyle {
+    toolVersion = "6.0"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.enabled true
+    }
+    executionData = files("build/jacoco/test.exec", "build/jacoco/intTest.exec")
+}
+
+// output details about unchecked and deprecated method calls
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+}
+
+// integration test configuration - in separate source directory
+sourceSets {
+    db {
+        resources.srcDir file('src/db/resources')
+    }
+
+    integrationTest {
+        compileClasspath += main.output + test.output
+        runtimeClasspath += main.output + test.output + db.output
+        java.srcDir file('src/integration-test/java')
+        resources.srcDir file('src/integration-test/resources')
+    }
+
+}
+
+// integration test compile and runtime configurations
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+configurations {
+    all*.exclude group: "org.hibernate", module: "hibernate-entitymanager"
+    all*.exclude group: "org.apache.tomcat", module: "tomcat-jdbc"
+}
+
+dependencies {
+    compile (
+            "org.springframework.boot:spring-boot-starter-actuator",
+            "org.springframework.boot:spring-boot-starter-jdbc",
+            // Securing rest resources can be done by hooking in spring-boot-starter-security
+            // "org.springframework.boot:spring-boot-starter-security",
+            "org.springframework.boot:spring-boot-starter-web",
+            "org.springframework.boot:spring-boot-starter-mail",
+            "joda-time:joda-time:2.8.1",
+            "com.google.guava:guava:18.0",
+            "ma.glasnost.orika:orika-core:1.4.6",
+            "org.projectlombok:lombok:1.16.6",
+            "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.7.3",
+            "org.springframework.boot:spring-boot-starter-data-jpa",
+            "org.jadira.usertype:usertype.core:4.0.0.GA",
+            "org.jdbi:jdbi:2.71",
+            "org.antlr:stringtemplate:3.2.1",
+            "org.freemarker:freemarker:2.3.23",
+            "commons-lang:commons-lang:2.6",
+            "com.twilio.sdk:twilio-java-sdk:5.8.0",
+    )
+
+    runtime(
+            "mysql:mysql-connector-java:5.1.38",
+            "com.zaxxer:HikariCP:2.4.3"
+    )
+
+    testCompile(
+            "org.springframework.boot:spring-boot-starter-test"
+    )
+
+    integrationTestCompile(
+            "org.springframework.boot:spring-boot-starter-test",
+            "com.h2database:h2",
+            "joda-time:joda-time:2.8.1",
+            "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.6.3",
+            "org.liquibase:liquibase-core:3.4.1"
+    )
+
+    dbCompile(
+            "org.liquibase:liquibase-core:3.4.1",
+            "mysql:mysql-connector-java:5.1.3"
+    )
+
+    checkstyle("com.puppycrawl.tools:checkstyle:6.14.1")
+}
+
+bootRun {
+    // support passing -Dsystem.property=value to bootRun task
+    systemProperties = System.properties
+}
+
+// integration test task that runs the integration tests (with correct classpath)
+task intTest(type: Test) {
+    if ( project.hasProperty('jvmArgs') ) {
+        jvmArgs = (project.jvmArgs.split("\\s+") as List)
+    }
+    testClassesDir = sourceSets.integrationTest.output.classesDir
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    outputs.upToDateWhen { false } // run the intTests every time
+    testLogging.showStandardStreams = true
+}
+
+task dbDistZip(type: Zip) {
+    destinationDir buildDir
+    archiveName "distributions/db.zip"
+    from sourceSets.db.resources
+    from configurations.dbCompile
+    include "**/*"
+    into 'liquibase'
+}
+
+def liquibaseMain = "liquibase.integration.commandline.Main"
+def liquibaseJdbcUrl = "jdbc:mysql://localhost/services?createDatabaseIfNotExist=true&useSSL=false"
+def commonLiquibaseArgs = ["--username=root",
+                 "--password=",
+                 "--url=${liquibaseJdbcUrl}",
+                 "--driver=com.mysql.jdbc.Driver",
+                 "update"]
+
+/**
+ * Run the liquibase schema creation scripts against the local dev db
+ */
+task dbUpdate(type: JavaExec) {
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    main = liquibaseMain
+    args "--changeLogFile=src/db/resources/schema/changeLog.xml"
+    args commonLiquibaseArgs
+}
+
+/**
+ * Run the liquibase schema seed  scripts (for test data) against the local dev db
+ */
+task dbSeed(type: JavaExec) {
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    main = liquibaseMain
+    args "--changeLogFile=src/db/resources/seed/changeLog-seed.xml"
+    args commonLiquibaseArgs
+}
+
+// ensure check task fails the build if there are failing integration tests
+check.dependsOn intTest
+// ensure integration tests run after unit tests
+intTest.mustRunAfter test
+
+findbugs {
+    excludeFilter = file("$projectDir/config/findbugs/excludeFilter.xml")
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+// create HTML reports of unit and integration tests in different directories
+tasks.withType(Test) {
+    reports.html.destination = file("${reporting.baseDir}/${name}")
+}
