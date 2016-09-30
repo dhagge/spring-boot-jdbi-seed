@@ -1,3 +1,5 @@
+# Spring Boot + JDBI 
+
 ## Description
 
 This is a seed project for building a RESTful API with Spring Boot and JDBI:
@@ -58,3 +60,7 @@ You can now consume the service endpoints which will run at ```http://localhost:
 The in-built test resource (com.myco.TestResource) is available at:
 
 * http://127.0.0.1:9090/test (GET and POST)
+
+## Tutorial
+
+See [this tutorial](http://damianhagge.com/blog/2014/09/29/spring-boot-jdbi/) for further info as it highlights the bare-bones changes needed just to integrate Spring Boot + JDBI.
