@@ -5,7 +5,7 @@
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
     <!-- Seed some test data -->
-    <changeSet author="dhagge" id="partner-table-seed-2">
+    <changeSet author="dhagge" id="test-table-seed-1">
         <insert tableName="my_test">
             <column name="id" value="1"/>
             <column name="description" value="Hello there, this is a test!"/>

@@ -5,7 +5,7 @@
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
     <!-- Liquibase schema tables go here -->
-    <changeSet author="dhagge" id="my_test-table-create-1" >
+    <changeSet author="dhagge" id="test-table-create-1" >
         <createTable tableName="my_test">
             <column name="id" type="int" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
