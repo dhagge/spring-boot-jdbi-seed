@@ -30,7 +30,7 @@ Typical usage is to:
 ## Build the project
 
 ```
-mvn clean install
+gradlew clean install
 ```
 
 This command will run the build, unit tests and integration tests.
@@ -38,13 +38,13 @@ This command will run the build, unit tests and integration tests.
 ## Run liquibase schema upgrade
 
 ```
-mvn dbUpdate
+gradlew dbUpdate
 ```
 
 ## Run the liquibase db seed script
 
 ```
-mvn dbSeed
+gradlew dbSeed
 ```
 
 ## Running the API
@@ -52,7 +52,7 @@ mvn dbSeed
 Start the service by running the following command:
 
 ```
-mvn bootRun
+gradlew bootRun
 ```
 
 You can now consume the service endpoints which will run at ```http://localhost:9090```.
